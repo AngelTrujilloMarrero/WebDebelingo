@@ -202,7 +202,7 @@ function App() {
         if (index === 0) {
             const dateWidth = ctx.measureText(dateText).width;
             const generationDate = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const additionalText = ` - https://debelingoconangel.web.app - Generado ${generationDate}`;
+            const additionalText = ` - https://admindebelingo.web.app - Generado ${generationDate}`;
             ctx.fillStyle = 'red';
             if (dateWidth + ctx.measureText(additionalText).width <= maxWidth) {
                 ctx.fillText(additionalText, dateWidth, currentY);
@@ -327,6 +327,8 @@ function App() {
       return;
     }
 
+    const isSmall = festivalEvents.length <= 3;
+
     // Create temporary container
     const tempContainer = document.createElement('div');
     tempContainer.style.cssText = `
@@ -412,7 +414,7 @@ function App() {
       contentDiv.style.cssText = `
         position: relative;
         z-index: 10;
-        background-color: rgba(255, 255, 255, 0.9);
+        background-color: rgba(255, 255, 255, 0.8);
         border: 2px solid #000000;
         padding: 20px;
         border-radius: 10px;
@@ -423,7 +425,8 @@ function App() {
         justify-content: center;
         align-items: center;
         box-sizing: border-box;
-        width: 98%;
+        width: 95%;
+        height: 95%;
         margin: 1%;
       `;
 
@@ -502,20 +505,20 @@ function App() {
         contentDiv.appendChild(dayHeader);
 
         dayEvents.forEach(event => {
-          let eventText = `<strong style="font-size: 1.5em; color: blue;">${event.hora}H</strong> | `;
+          const fontSize = isSmall ? '2.5em' : '1.5em';
+          let eventText = `<strong style="font-size: ${fontSize}; color: blue;">${event.hora}H</strong> | `;
           
           if (event.tipo !== 'Baile Normal') {
-            eventText += `<strong style="font-size: 1.5em;">${event.tipo}</strong> | `;
+            eventText += `<strong style="font-size: ${fontSize};">${event.tipo}</strong> | `;
           }
           
-          eventText += `<strong style="font-size: 1.5em; color: black; font-family: Helvetica Black, sans-serif; text-shadow: -2px -2px 0 red, 2px 2px 0 red;">${event.orquesta}</strong>`;
+          eventText += `<strong style="font-size: ${fontSize}; color: black; font-family: Helvetica Black, sans-serif; text-shadow: -2px -2px 0 red, 2px 2px 0 red;">${event.orquesta}</strong>`;
 
           const eventParagraph = document.createElement('p');
           eventParagraph.innerHTML = eventText;
           eventParagraph.style.cssText = `
             color: #000000;
             margin: 5px 0;
-            font-size: 1.5em;
             font-family: Impact, sans-serif;
             text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
           `;
