@@ -299,95 +299,71 @@ function App() {
   const exportFestivalToImage = useCallback(async (selectedFestival: string) => {
     if (!selectedFestival) return;
 
-    let lugar = '';
-    let municipio = '';
-    
-    if (selectedFestival.includes(',')) {
-      [lugar, municipio] = selectedFestival.split(', ');
+    let lugar: string, municipio: string;
+    if (selectedFestival.includes(', ')) {
+        [lugar, municipio] = selectedFestival.split(', ');
     } else {
-      lugar = '';
-      municipio = selectedFestival;
+        lugar = '';
+        municipio = selectedFestival;
     }
 
-    // Calculate cutoff date (2 days ago)
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 2);
     cutoffDate.setHours(0, 0, 0, 0);
     const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
-    // Filter events for this festival
-    const festivalEvents = events.filter(event => 
-      event.lugar === lugar && 
-      event.municipio === municipio && 
-      event.day >= cutoffDateString
+    const festivalEvents = events.filter(event =>
+        event.lugar === lugar &&
+        event.municipio === municipio &&
+        event.day >= cutoffDateString
     );
 
-    if (festivalEvents.length === 0) {
-      alert('No hay eventos programados para esta fiesta');
-      return;
-    }
+    const COLUMN_THRESHOLD = 7;
+    const totalEvents = festivalEvents.length;
 
-    const isSmall = festivalEvents.length <= 3;
-
-    // Create temporary container
     const tempContainer = document.createElement('div');
     tempContainer.style.cssText = `
-      width: 1200px;
-      height: 1200px;
-      position: relative;
-      padding: 20px;
-      text-align: center;
-      margin: 0 auto;
-      border-radius: 10px;
-      box-sizing: border-box;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      max-width: 1200px;
-      position: absolute;
-      top: -9999px;
-      left: -9999px;
+        width: 1200px;
+        height: 1200px;
+        position: relative;
+        padding: 20px;
+        text-align: center;
+        margin: 0 auto;
+        border-radius: 10px;
+        box-sizing: border-box;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        max-width: 1200px;
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
     `;
 
-    // Background div
     const backgroundDiv = document.createElement('div');
     backgroundDiv.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-size: cover;
-      background-position: center;
-      opacity: 0.5;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+        opacity: 0.5;
     `;
 
-    // Base URLs for background images
     const baseUrls = [
-      'https://admindebelingo.web.app/fotos/',
-      'https://debelingo.webcindario.com/',
-      'http://debelingoconangel.infy.uk/fotos/'
+        'https://admindebelingo.web.app/fotos/',
+        'https://debelingo.webcindario.com/',
+        'http://debelingoconangel.infy.uk/fotos/'
     ];
 
-    // Normalize location names
-    const normalizedLugar = lugar
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/ñ/g, 'ñ')
-      .replace(/\s+/g, '');
-    
-    const normalizedMunicipio = municipio
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/ñ/g, 'ñ')
-      .replace(/\s+/g, '');
+    const normalizedLugar = lugar.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ñ/g, 'n').replace(/\s+/g, '');
+    const normalizedMunicipio = municipio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ñ/g, 'n').replace(/\s+/g, '');
 
-    // Generate possible image URLs
-  const possibleImages = [
+    const possibleImages = [
         `${baseUrls[0]}${normalizedLugar}.jpg`, `${baseUrls[1]}${normalizedLugar}.jpg`, `${baseUrls[2]}${normalizedLugar}.jpg`,
         `${baseUrls[0]}${normalizedLugar}.png`, `${baseUrls[1]}${normalizedLugar}.png`, `${baseUrls[2]}${normalizedLugar}.png`,
         `${baseUrls[0]}${normalizedLugar}.PNG`, `${baseUrls[1]}${normalizedLugar}.PNG`, `${baseUrls[2]}${normalizedLugar}.PNG`,
@@ -409,184 +385,238 @@ function App() {
     ];
 
     const createContent = () => {
-      // Content div
-      const contentDiv = document.createElement('div');
-      contentDiv.style.cssText = `
-        position: relative;
-        z-index: 10;
-        background-color: rgba(255, 255, 255, 0.8);
-        border: 2px solid #000000;
-        padding: 20px;
-        border-radius: 10px;
-        max-width: 100%;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        box-sizing: border-box;
-        width: 95%;
-        height: 95%;
-        margin: 1%;
-      `;
-
-      // Generation date
-      const generationDate = document.createElement('p');
-      generationDate.style.cssText = `
-        font-size: 0.8em;
-        color: #888888;
-        margin-bottom: 5px;
-        font-family: Arial, sans-serif;
-      `;
-      generationDate.textContent = `Generado ${new Date().toLocaleString('es-ES')}`;
-      contentDiv.appendChild(generationDate);
-
-      // Festival header
-      const festivalHeader = document.createElement('h2');
-      festivalHeader.style.cssText = `
-        color: #330000;
-        font-weight: bold;
-        text-decoration: underline;
-        margin-bottom: 20px;
-        font-size: 3em;
-        font-family: Impact, sans-serif;
-        text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
-        border: 6px solid #000000;
-        background-color: rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.7);
-        padding: 10px;
-      `;
-      
-      if (lugar) {
-        festivalHeader.textContent = `VERBENAS ${lugar.toUpperCase()}-${municipio.toUpperCase()}`;
-      } else {
-        festivalHeader.textContent = `VERBENAS ${municipio.toUpperCase()}`;
-      }
-      contentDiv.appendChild(festivalHeader);
-
-      // Sort events
-      festivalEvents.sort((a, b) => {
-        const dateA = new Date(`${a.day}T${a.hora}`);
-        const dateB = new Date(`${b.day}T${b.hora}`);
-        return dateA.getTime() - dateB.getTime();
-      });
-
-      // Group events by day
-      const eventsByDay: { [key: string]: Event[] } = {};
-      festivalEvents.forEach(event => {
-        const eventDate = new Date(event.day);
-        const dayKey = eventDate.toISOString().split('T')[0];
-        if (!eventsByDay[dayKey]) {
-          eventsByDay[dayKey] = [];
-        }
-        eventsByDay[dayKey].push(event);
-      });
-
-      // Add events
-      Object.entries(eventsByDay).forEach(([dayKey, dayEvents]) => {
-        const dayDate = new Date(dayKey);
-        const dayName = dayDate.toLocaleDateString('es-ES', { 
-          weekday: 'long', 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
-        }).toUpperCase();
-
-        const dayHeader = document.createElement('h3');
-        dayHeader.textContent = dayName;
-        dayHeader.style.cssText = `
-          color: #006400;
-          font-weight: bold;
-          text-decoration: underline;
-          margin-bottom: 10px;
-          font-size: 2em;
-          font-family: Impact, sans-serif;
-          text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
+        const contentDiv = document.createElement('div');
+        contentDiv.style.cssText = `
+            position: relative;
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.6);
+            border: 1px solid #000000;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            width: 98%;
+            margin-left: 1%;
+            margin-right: 1%;
         `;
-        contentDiv.appendChild(dayHeader);
 
-        dayEvents.forEach(event => {
-          const fontSize = isSmall ? '2.5em' : '1.5em';
-          let eventText = `<strong style="font-size: ${fontSize}; color: blue;">${event.hora}H</strong> | `;
-          
-          if (event.tipo !== 'Baile Normal') {
-            eventText += `<strong style="font-size: ${fontSize};">${event.tipo}</strong> | `;
-          }
-          
-          eventText += `<strong style="font-size: ${fontSize}; color: black; font-family: Helvetica Black, sans-serif; text-shadow: -2px -2px 0 red, 2px 2px 0 red;">${event.orquesta}</strong>`;
+        const generationDate = document.createElement('p');
+        generationDate.style.cssText = `
+            font-size: 0.8em;
+            color: #888888;
+            margin-bottom: 5px;
+            font-family: Arial, sans-serif;
+        `;
+        generationDate.textContent = `Generado ${new Date().toLocaleString('es-ES')}`;
+        contentDiv.appendChild(generationDate);
 
-          const eventParagraph = document.createElement('p');
-          eventParagraph.innerHTML = eventText;
-          eventParagraph.style.cssText = `
-            color: #000000;
-            margin: 5px 0;
+        const festivalHeader = document.createElement('h2');
+        festivalHeader.style.cssText = `
+            color: #330000;
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-color: #330000;
+            margin-bottom: 10px;
+            font-size: 3em;
             font-family: Impact, sans-serif;
             text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
-          `;
-          contentDiv.appendChild(eventParagraph);
+            border: 6px solid #000000;
+            background-color: rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.7);
+            padding: 2px 5px 5px 5px;
+        `;
+        festivalHeader.textContent = lugar ? `VERBENAS ${lugar.toUpperCase()}-${municipio.toUpperCase()}` : `VERBENAS ${municipio.toUpperCase()}`;
+        contentDiv.appendChild(festivalHeader);
+
+        festivalEvents.sort((a, b) => new Date(`${a.day}T${a.hora}`).getTime() - new Date(`${b.day}T${b.hora}`).getTime());
+
+        const eventsByDay: { [key: string]: Event[] } = {};
+        festivalEvents.forEach(event => {
+            const dayKey = new Date(event.day).toISOString().split('T')[0];
+            if (!eventsByDay[dayKey]) eventsByDay[dayKey] = [];
+            eventsByDay[dayKey].push(event);
         });
-      });
 
-      // Info text
-      const infoText = document.createElement('p');
-      infoText.style.cssText = `
-        font-size: 1.2em;
-        color: #FF0000;
-        margin-top: 20px;
-        font-family: Arial, sans-serif;
-        font-weight: bold;
-      `;
-      infoText.innerHTML = 'Más info en: https://admindebelingo.web.app';
-      contentDiv.appendChild(infoText);
+        const dayKeys = Object.keys(eventsByDay);
+        const eventsContainer = document.createElement('div');
+        eventsContainer.style.width = '100%';
+        eventsContainer.style.margin = '0 auto';
 
-      tempContainer.appendChild(backgroundDiv);
-      tempContainer.appendChild(contentDiv);
-      document.body.appendChild(tempContainer);
+        if (totalEvents >= COLUMN_THRESHOLD) {
+            eventsContainer.style.columnCount = '2';
+            eventsContainer.style.columnGap = '30px';
+            eventsContainer.style.columnFill = 'balance';
 
-      // Generate image after small delay
-      setTimeout(() => {
-        html2canvas(tempContainer, {
-          width: 1200,
-          height: 1200,
-          backgroundColor: null,
-          useCORS: true
-        }).then(canvas => {
-          const link = document.createElement('a');
-          const filename = lugar ? `${lugar}_${municipio}_2025.png` : `${municipio}_2025.png`;
-          link.download = filename;
-          link.href = canvas.toDataURL('image/png');
-          link.click();
+            dayKeys.forEach(dayKey => {
+                const daySection = document.createElement('div');
+                daySection.style.breakInside = 'avoid';
+                daySection.style.marginBottom = '15px';
 
-          document.body.removeChild(tempContainer);
-        }).catch(error => {
-          console.error('Error generating image:', error);
-          document.body.removeChild(tempContainer);
-          alert('Error al generar la imagen. Inténtalo de nuevo.');
-        });
-      }, 100);
+                const dayEvents = eventsByDay[dayKey];
+                const dayDate = new Date(dayKey);
+                const dayName = dayDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+
+                const dayHeader = document.createElement('h3');
+                dayHeader.textContent = dayName;
+                dayHeader.style.cssText = `
+                    color: #006400;
+                    font-weight: bold;
+                    text-decoration: underline;
+                    text-decoration-color: #006400;
+                    margin-bottom: 8px;
+                    font-size: 1.8em;
+                    font-family: Impact, sans-serif;
+                    text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
+                `;
+                daySection.appendChild(dayHeader);
+
+                dayEvents.forEach(event => {
+                    let eventText = `<strong style="font-size: 1.3em; color: blue;">${event.hora}H</strong>|`;
+                    if (event.tipo !== 'Baile Normal') {
+                        eventText += `<strong style="font-size: 1.3em;">${event.tipo}</strong>|`;
+                    }
+                    eventText += `<strong style="font-size: 1.3em; color: black; font-family: Helvetica Black, sans-serif; text-shadow: -2px -2px 0 red, 2px 2px 0 red;">${event.orquesta}</strong>`;
+
+                    const eventParagraph = document.createElement('p');
+                    eventParagraph.innerHTML = eventText;
+                    eventParagraph.style.cssText = `
+                        color: #000000;
+                        margin: 3px 0;
+                        font-size: 1.3em;
+                        font-family: Impact, sans-serif;
+                        text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
+                    `;
+                    daySection.appendChild(eventParagraph);
+                });
+                eventsContainer.appendChild(daySection);
+            });
+        } else {
+            dayKeys.forEach(dayKey => {
+                const dayEvents = eventsByDay[dayKey];
+                const dayDate = new Date(dayKey);
+                const dayName = dayDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+
+                const dayHeader = document.createElement('h3');
+                dayHeader.textContent = dayName;
+                dayHeader.style.cssText = `
+                    color: #006400;
+                    font-weight: bold;
+                    text-decoration: underline;
+                    text-decoration-color: #006400;
+                    margin-bottom: 8px;
+                    font-size: 2em;
+                    font-family: Impact, sans-serif;
+                    text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
+                `;
+                eventsContainer.appendChild(dayHeader);
+
+                dayEvents.forEach(event => {
+                    let eventText = `<strong style="font-size: 1.5em; color: blue;">${event.hora}H</strong>|`;
+                    if (event.tipo !== 'Baile Normal') {
+                        eventText += `<strong style="font-size: 1.5em;">${event.tipo}</strong>|`;
+                    }
+                    eventText += `<strong style="font-size: 1.5em; color: black; font-family: Helvetica Black, sans-serif; text-shadow: -2px -2px 0 red, 2px 2px 0 red;">${event.orquesta}</strong>`;
+
+                    const eventParagraph = document.createElement('p');
+                    eventParagraph.innerHTML = eventText;
+                    eventParagraph.style.cssText = `
+                        color: #000000;
+                        margin: 3px 0;
+                        font-size: 1.5em;
+                        font-family: Impact, sans-serif;
+                        text-shadow: -2px -2px 0 yellow, 2px 2px 0 gold;
+                    `;
+                    eventsContainer.appendChild(eventParagraph);
+                });
+            });
+        }
+        contentDiv.appendChild(eventsContainer);
+
+        const infoText = document.createElement('p');
+        infoText.style.cssText = `
+            font-size: 1.8em;
+            color: #FF0000;
+            margin-top: 15px;
+            font-family: Arial, sans-serif;
+        `;
+        infoText.innerHTML = '<strong>Más info en: https://admindebelingo.web.app o https://debelingo.webcindario.com</strong>';
+
+        tempContainer.appendChild(backgroundDiv);
+        tempContainer.appendChild(contentDiv);
+        tempContainer.appendChild(infoText);
+        document.body.appendChild(tempContainer);
+
+        setTimeout(() => {
+            const containerHeight = 1200;
+            const containerPadding = 40;
+            const minRequiredHeight = containerHeight * 0.7 - containerPadding;
+            const maxAllowedHeight = containerHeight * 0.96 - containerPadding;
+
+            let fontSizeMultiplier = 1;
+            const contentHeight = contentDiv.scrollHeight;
+
+            if (contentHeight < minRequiredHeight) {
+                const neededMultiplier = minRequiredHeight / contentHeight;
+                fontSizeMultiplier = Math.min(neededMultiplier, 2);
+            }
+
+            if (contentHeight * fontSizeMultiplier > maxAllowedHeight) {
+                fontSizeMultiplier = maxAllowedHeight / contentHeight;
+            }
+
+            fontSizeMultiplier = Math.max(fontSizeMultiplier, 0.7);
+            fontSizeMultiplier = Math.min(fontSizeMultiplier, 2);
+
+            festivalHeader.style.fontSize = `${3 * fontSizeMultiplier}em`;
+            Array.from(contentDiv.querySelectorAll('h3')).forEach(dayHeader => {
+                (dayHeader as HTMLElement).style.fontSize = `${(totalEvents >= COLUMN_THRESHOLD ? 1.8 : 2) * fontSizeMultiplier}em`;
+            });
+            Array.from(contentDiv.querySelectorAll('p')).forEach(paragraph => {
+                (paragraph as HTMLElement).style.fontSize = `${(totalEvents >= COLUMN_THRESHOLD ? 1.3 : 1.5) * fontSizeMultiplier}em`;
+            });
+
+            contentDiv.style.minHeight = `${minRequiredHeight}px`;
+            contentDiv.style.display = 'flex';
+            contentDiv.style.flexDirection = 'column';
+            contentDiv.style.justifyContent = 'center';
+
+            html2canvas(tempContainer, {
+                width: 1200,
+                height: 1200,
+                backgroundColor: null,
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${lugar || municipio}_${municipio}_2025.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                document.body.removeChild(tempContainer);
+            });
+        }, 100);
     };
 
-    // Try to load background image
-    const tryNextImage = (index: number): void => {
-      if (index >= possibleImages.length) {
-        backgroundDiv.style.backgroundColor = 'white';
-        createContent();
-        return;
-      }
-
-      const img = new Image();
-      img.src = possibleImages[index];
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        backgroundDiv.style.backgroundImage = `url('${possibleImages[index]}')`;
-        createContent();
-      };
-      img.onerror = () => {
-        tryNextImage(index + 1);
-      };
+    const tryNextImage = (index: number) => {
+        if (index >= possibleImages.length) {
+            backgroundDiv.style.backgroundColor = 'white';
+            createContent();
+            return;
+        }
+        const img = new Image();
+        img.src = possibleImages[index];
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            backgroundDiv.style.backgroundImage = `url('${possibleImages[index]}')`;
+            createContent();
+        };
+        img.onerror = () => tryNextImage(index + 1);
     };
 
     tryNextImage(0);
-  }, [events]);
+}, [events]);
 
   const showFestivalSelection = useCallback(() => {
     setFestivalSelectionVisible(!festivalSelectionVisible);
