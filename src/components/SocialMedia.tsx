@@ -93,7 +93,7 @@ const SocialMedia: React.FC = () => {
               📱 Recibe notificaciones instantáneas de nuevas verbenas y eventos especiales
             </p>
             <p className="text-purple-300 text-xs mt-2">
-              ¡Únete a nuestra comunidad de amantes de las verbenas canarias!
+              ¡Únete a nuestra comunidad de amantes de las verbenas de Tenerife!
             </p>
           </div>
         </div>

@@ -41,9 +41,7 @@ const VisitCounter: React.FC = () => {
             ></div>
           </div>
 
-          <div className="text-emerald-200 text-sm opacity-75">
-            Contador actualizado en tiempo real
-          </div>
+        
         </div>
       </div>
     </div>

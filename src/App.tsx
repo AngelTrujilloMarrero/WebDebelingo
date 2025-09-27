@@ -2,9 +2,8 @@ import React, { useState, useCallback } from 'react';
 import Header from './components/Header';
 import EventsList from './components/EventsList';
 import MapComponent from './components/MapComponent';
-import GeminiChat from './components/GeminiChat';
 import Statistics from './components/Statistics';
-import StatsTables from './components/StatsTables';
+import Analizador from './components/Analizador';
 import VisitCounter from './components/VisitCounter';
 import SocialMedia from './components/SocialMedia';
 import { useEvents } from './hooks/useEvents';
@@ -18,153 +17,263 @@ function App() {
   const [festivalSelectionVisible, setFestivalSelectionVisible] = useState(false);
   const [selectedFestival, setSelectedFestival] = useState('');
 
-  // Export functions
-  const exportWeekToImage = useCallback(async () => {
-    const currentDate = new Date();
-    
-    // Fecha de inicio: 1 día anterior al día actual
-    const startDate = new Date(currentDate);
-    startDate.setDate(currentDate.getDate() - 1);
-    
-    // Fecha de fin: domingo de la semana actual
-    const endDate = new Date(currentDate);
-    const daysUntilSunday = 7 - currentDate.getDay(); // Días que faltan para llegar al domingo
-    if (currentDate.getDay() === 0) {
-      // Si hoy es domingo, usar hoy como fecha final
-      endDate.setDate(currentDate.getDate());
+  const exportByDateToImage = useCallback(async (startDateStr?: string, endDateStr?: string) => {
+    let startDate: Date, endDate: Date;
+
+    if (startDateStr && endDateStr) {
+        startDate = new Date(startDateStr);
+        endDate = new Date(endDateStr);
     } else {
-      // Si no es domingo, ir al próximo domingo
-      endDate.setDate(currentDate.getDate() + daysUntilSunday);
-    }
-
-    // Filter events from 1 day ago until next Sunday
-    const weekEvents = events.filter(event => {
-      const eventDate = new Date(event.day);
-      return eventDate >= startDate && eventDate <= endDate;
-    });
-
-    if (weekEvents.length === 0) {
-      alert('No hay eventos programados para el período seleccionado');
-      return;
-    }
-
-    // Create temporary container for export
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = `
-      width: 800px;
-      padding: 20px;
-      background: white;
-      font-family: Arial, sans-serif;
-      position: absolute;
-      top: -9999px;
-      left: -9999px;
-    `;
-
-    // Add header with dynamic date range
-    const header = document.createElement('h2');
-    const startDateStr = startDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
-    const endDateStr = endDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-    header.textContent = `VERBENAS DEL ${startDateStr} AL ${endDateStr}`;
-    header.style.cssText = `
-      text-align: center;
-      color: #333;
-      font-size: 2em;
-      margin-bottom: 20px;
-      border-bottom: 3px solid #007BFF;
-      padding-bottom: 10px;
-    `;
-    tempContainer.appendChild(header);
-
-    // Group events by day (without date filtering for export)
-    const eventsByDay: { [key: string]: Event[] } = {};
-    weekEvents.forEach(event => {
-      const dayKey = event.day;
-      if (!eventsByDay[dayKey]) {
-        eventsByDay[dayKey] = [];
-      }
-      eventsByDay[dayKey].push(event);
-    });
-
-    // Sort days chronologically
-    const sortedDays = Object.keys(eventsByDay).sort((a, b) => 
-      new Date(a).getTime() - new Date(b).getTime()
-    );
-
-    // Add events
-    sortedDays.forEach(dayKey => {
-      const dayEvents = eventsByDay[dayKey];
-      
-      // Sort events within each day by time
-      dayEvents.sort((a, b) => {
-        return new Date(`${a.day}T${a.hora}`).getTime() - new Date(`${b.day}T${b.hora}`).getTime();
-      });
-      
-      const dayDate = new Date(dayKey);
-      const dayName = dayDate.toLocaleDateString('es-ES', { 
-        weekday: 'long', 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
-      });
-
-      const dayHeader = document.createElement('h3');
-      dayHeader.textContent = dayName.toUpperCase();
-      dayHeader.style.cssText = `
-        color: #007BFF;
-        font-size: 1.5em;
-        margin: 20px 0 10px 0;
-        text-decoration: underline;
-      `;
-      tempContainer.appendChild(dayHeader);
-
-      dayEvents.forEach(event => {
-        const eventP = document.createElement('p');
-        let eventText = `${event.hora}H | `;
-        if (event.tipo !== 'Baile Normal') {
-          eventText += `${event.tipo} | `;
+        const currentDate = new Date();
+        startDate = new Date(currentDate);
+        startDate.setDate(currentDate.getDate() - 1);
+        endDate = new Date(currentDate);
+        const daysUntilSunday = 7 - currentDate.getDay();
+        if (currentDate.getDay() === 0) {
+            endDate.setDate(currentDate.getDate());
+        } else {
+            endDate.setDate(currentDate.getDate() + daysUntilSunday);
         }
-        eventText += `${event.lugar ? event.lugar + ', ' : ''}${event.municipio} - ${event.orquesta}`;
-        
-        eventP.textContent = eventText;
-        eventP.style.cssText = `
-          margin: 5px 0;
-          font-size: 1.1em;
-          color: #333;
-        `;
-        tempContainer.appendChild(eventP);
-      });
+    }
+
+    const filteredEvents = events.filter(event => {
+        const eventDate = new Date(event.day + 'T00:00:00');
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59);
+        return eventDate >= start && eventDate <= end;
     });
 
-    // Add footer
-    const footer = document.createElement('p');
-    footer.textContent = 'Más info en: https://debelingoconangel.web.app';
-    footer.style.cssText = `
-      text-align: center;
-      color: #666;
-      font-size: 0.9em;
-      margin-top: 20px;
-    `;
-    tempContainer.appendChild(footer);
+    if (filteredEvents.length === 0) {
+        alert('No hay eventos en el intervalo seleccionado.');
+        return;
+    }
 
-    document.body.appendChild(tempContainer);
+    const groupedEvents = filteredEvents.reduce((acc, event) => {
+        const date = event.day;
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(event);
+        return acc;
+    }, {} as Record<string, Event[]>);
+
+    for (const date in groupedEvents) {
+        groupedEvents[date].sort((a, b) => {
+            const timeA = a.hora || '00:00';
+            const timeB = b.hora || '00:00';
+            return timeA.localeCompare(timeB);
+        });
+    }
+
+    const sortedDates = Object.keys(groupedEvents).sort();
+
+    const maxWidth = 1200;
+    const colors = {
+        dia: '#5c4033',
+        hora: '#00008b',
+        municipio: '#006400',
+        lugar: '#006400',
+        tipo: '#9400d3',
+        texto: '#000000'
+    };
+    const maxFontSize = 24;
+    const minFontSize = 10;
+    const initialFontSize = Math.max(minFontSize, Math.min(maxFontSize, Math.floor(maxWidth / 25)));
+    const lineHeightFactor = 1.2;
+    const maxHeight = 1200;
+
+    function getFittingSubstring(text: string, ctx: CanvasRenderingContext2D, maxWidth: number) {
+        let fitIndex = 0;
+        let lastSpaceIndex = -1;
+        let currentWidth = 0;
+
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === ' ') lastSpaceIndex = i;
+            currentWidth = ctx.measureText(text.substring(0, i + 1)).width;
+
+            if (currentWidth > maxWidth) {
+                if (lastSpaceIndex !== -1 && lastSpaceIndex < i) {
+                    return text.substring(0, lastSpaceIndex + 1);
+                }
+                return text.substring(0, i > 0 ? i : 0);
+            }
+            fitIndex = i + 1;
+        }
+        return text.substring(0, fitIndex);
+    }
+
+    function calculateEventLines(event: Event, ctx: CanvasRenderingContext2D, maxWidth: number) {
+        let lines = 0;
+        let currentLineWidth = 0;
+        const segments = [
+            { text: event.orquesta || '', color: colors.texto },
+            { text: event.lugar ? ` - ${event.lugar}` : '', color: colors.lugar },
+            { text: event.municipio ? ` - ${event.municipio}` : '', color: colors.municipio },
+            { text: event.hora ? ` - ${event.hora}` : '', color: colors.hora },
+            { text: event.tipo ? ` - ${event.tipo}` : '', color: colors.tipo }
+        ];
+        let isFirstSegmentOnLine = true;
+        segments.forEach(({ text }) => {
+            if (!text) return;
+            let remainingText = text.trim();
+            while (remainingText.length > 0) {
+                const prefix = (currentLineWidth > 0 || !isFirstSegmentOnLine) ? ' ' : '';
+                const effectiveText = prefix + remainingText;
+                const availableWidth = maxWidth - currentLineWidth;
+                let substring = getFittingSubstring(effectiveText, ctx, availableWidth);
+                if (substring.length === 0 || (substring === prefix && remainingText.length > 0)) {
+                    lines++;
+                    currentLineWidth = 0;
+                    isFirstSegmentOnLine = true;
+                    continue;
+                }
+                if (substring.startsWith(prefix)) {
+                    substring = substring.substring(prefix.length);
+                }
+                currentLineWidth += ctx.measureText(prefix + substring).width;
+                remainingText = remainingText.substring(substring.length).trimStart();
+                if (isFirstSegmentOnLine) {
+                    lines++;
+                    isFirstSegmentOnLine = false;
+                }
+                if (remainingText.length > 0) {
+                    currentLineWidth = 0;
+                    isFirstSegmentOnLine = true;
+                }
+            }
+        });
+        return Math.max(1, lines);
+    }
+
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr + 'T12:00:00');
+        const dayName = date.toLocaleDateString('es-ES', { weekday: 'long' }).toUpperCase();
+        const formattedDate = date.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        return `${formattedDate} (${dayName})`;
+    };
+
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d')!;
+    tempCtx.font = `bold ${initialFontSize}px Arial`;
+
+    let requiredHeight = 0;
+    const initialLineHeight = initialFontSize * lineHeightFactor;
+    sortedDates.forEach((fecha) => {
+        requiredHeight += initialLineHeight;
+        groupedEvents[fecha].forEach(event => {
+            const eventLines = calculateEventLines(event, tempCtx, maxWidth);
+            requiredHeight += initialLineHeight * eventLines;
+        });
+    });
+
+    let fontSize = initialFontSize;
+    let finalLineHeight = initialLineHeight;
+
+    if (requiredHeight > maxHeight) {
+        const scaleFactor = maxHeight / requiredHeight;
+        fontSize = Math.max(minFontSize, Math.floor(initialFontSize * scaleFactor));
+        finalLineHeight = fontSize * lineHeightFactor;
+        tempCtx.font = `bold ${fontSize}px Arial`;
+        requiredHeight = 0;
+        sortedDates.forEach((fecha) => {
+            requiredHeight += finalLineHeight;
+            groupedEvents[fecha].forEach(event => {
+                const eventLines = calculateEventLines(event, tempCtx, maxWidth);
+                requiredHeight += finalLineHeight * eventLines;
+            });
+        });
+    }
+    const canvasHeight = requiredHeight;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = maxWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textBaseline = 'top';
+    ctx.font = `bold ${fontSize}px Arial`;
+
+    let currentY = 0;
+    sortedDates.forEach((fecha, index) => {
+        ctx.fillStyle = colors.dia;
+        const dateText = formatDate(fecha);
+        ctx.fillText(dateText, 0, currentY);
+
+        if (index === 0) {
+            const dateWidth = ctx.measureText(dateText).width;
+            const generationDate = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const additionalText = ` - https://debelingoconangel.web.app - Generado ${generationDate}`;
+            ctx.fillStyle = 'red';
+            if (dateWidth + ctx.measureText(additionalText).width <= maxWidth) {
+                ctx.fillText(additionalText, dateWidth, currentY);
+            }
+        }
+
+        ctx.strokeStyle = colors.dia;
+        ctx.lineWidth = 1;
+        const underlineMargin = 2;
+        const lineY = currentY + fontSize + underlineMargin;
+        ctx.beginPath();
+        ctx.moveTo(0, lineY);
+        ctx.lineTo(maxWidth, lineY);
+        ctx.stroke();
+        currentY += finalLineHeight;
+
+        groupedEvents[fecha].forEach(event => {
+            const segments = [
+                { text: event.orquesta || '', color: colors.texto },
+                { text: event.lugar ? ` - ${event.lugar}` : '', color: colors.lugar },
+                { text: event.municipio ? ` - ${event.municipio}` : '', color: colors.municipio },
+                { text: event.hora ? ` - ${event.hora}` : '', color: colors.hora },
+                { text: event.tipo ? ` - ${event.tipo}` : '', color: colors.tipo }
+            ];
+            let currentX = 0;
+            segments.forEach(({ text, color }) => {
+                if (!text) return;
+                ctx.fillStyle = color;
+                let remainingText = text.trim();
+                while (remainingText.length > 0) {
+                    const availableWidth = maxWidth - currentX;
+                    let substring = getFittingSubstring(remainingText, ctx, availableWidth);
+                    if (substring === '' && currentX === 0 && ctx.measureText(remainingText.split(' ')[0]).width > maxWidth) {
+                        let breakIndex = 0;
+                        for(let k=1; k <= remainingText.length; k++){
+                            if(ctx.measureText(remainingText.substring(0, k)).width > maxWidth){
+                                breakIndex = k-1;
+                                break;
+                            }
+                            breakIndex = k;
+                        }
+                        substring = remainingText.substring(0, breakIndex);
+                        if(substring === '') substring = remainingText[0];
+                    }
+                    else if (substring === '') {
+                        currentY += finalLineHeight;
+                        currentX = 0;
+                        continue;
+                    }
+                    ctx.fillText(substring, currentX, currentY);
+                    currentX += ctx.measureText(substring).width;
+                    remainingText = remainingText.substring(substring.length).trimStart();
+                    if (remainingText.length > 0) {
+                        currentY += finalLineHeight;
+                        currentX = 0;
+                    }
+                }
+            });
+            currentY += finalLineHeight;
+        });
+    });
 
     try {
-      const canvas = await html2canvas(tempContainer, { 
-        backgroundColor: '#ffffff',
-        scale: 2 
-      });
-      
-      const link = document.createElement('a');
-      const startDateFileName = startDate.toLocaleDateString('es-ES').replace(/\//g, '-');
-      const endDateFileName = endDate.toLocaleDateString('es-ES').replace(/\//g, '-');
-      link.download = `Verbenas_${startDateFileName}_al_${endDateFileName}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch (error) {
-      console.error('Error exporting image:', error);
-      alert('Error al exportar la imagen');
-    } finally {
-      document.body.removeChild(tempContainer);
+        const dataURL = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.href = dataURL;
+        downloadLink.download = 'eventos.png';
+        downloadLink.click();
+    } catch (e) {
+        console.error("Error generando data URL:", e);
+        alert("Error al generar la imagen. Puede deberse a restricciones de seguridad del navegador.");
     }
   }, [events]);
 
@@ -255,7 +364,7 @@ function App() {
 
     // Base URLs for background images
     const baseUrls = [
-      'https://debelingoconangel.web.app/fotos/',
+      'https://admindebelingo.web.app/fotos/',
       'https://debelingo.webcindario.com/',
       'http://debelingoconangel.infy.uk/fotos/'
     ];
@@ -276,18 +385,25 @@ function App() {
       .replace(/\s+/g, '');
 
     // Generate possible image URLs
-    const possibleImages = [
-      `${baseUrls[0]}${normalizedLugar}.jpg`,
-      `${baseUrls[1]}${normalizedLugar}.jpg`,
-      `${baseUrls[2]}${normalizedLugar}.jpg`,
-      `${baseUrls[0]}${normalizedLugar}.png`,
-      `${baseUrls[1]}${normalizedLugar}.png`,
-      `${baseUrls[2]}${normalizedLugar}.png`,
-      `${baseUrls[0]}${normalizedMunicipio}.jpg`,
-      `${baseUrls[0]}${normalizedMunicipio}.png`,
-      `${baseUrls[0]}${normalizedLugar}_${normalizedMunicipio}.jpg`,
-      `${baseUrls[1]}${normalizedMunicipio}.jpg`,
-      `${baseUrls[2]}${normalizedMunicipio}.jpg`
+  const possibleImages = [
+        `${baseUrls[0]}${normalizedLugar}.jpg`, `${baseUrls[1]}${normalizedLugar}.jpg`, `${baseUrls[2]}${normalizedLugar}.jpg`,
+        `${baseUrls[0]}${normalizedLugar}.png`, `${baseUrls[1]}${normalizedLugar}.png`, `${baseUrls[2]}${normalizedLugar}.png`,
+        `${baseUrls[0]}${normalizedLugar}.PNG`, `${baseUrls[1]}${normalizedLugar}.PNG`, `${baseUrls[2]}${normalizedLugar}.PNG`,
+        `${baseUrls[0]}${normalizedLugar}.JPG`, `${baseUrls[1]}${normalizedLugar}.JPG`, `${baseUrls[2]}${normalizedLugar}.JPG`,
+        `${baseUrls[0]}${normalizedLugar}.jpeg`, `${baseUrls[1]}${normalizedLugar}.jpeg`, `${baseUrls[2]}${normalizedLugar}.jpeg`,
+        `${baseUrls[0]}${normalizedLugar}.JPEG`, `${baseUrls[1]}${normalizedLugar}.JPEG`, `${baseUrls[2]}${normalizedLugar}.JPEG`,
+        `${baseUrls[0]}${normalizedMunicipio}.jpg`, `${baseUrls[0]}${normalizedMunicipio}.png`,
+        `${baseUrls[0]}${normalizedLugar}_${normalizedMunicipio}.jpg`, `${baseUrls[0]}${normalizedMunicipio}_${normalizedLugar}.JPG`,
+        `${baseUrls[0]}${normalizedMunicipio}_${normalizedLugar}.jpg`, `${baseUrls[0]}${normalizedLugar}_${normalizedMunicipio}.JPG`,
+        `${baseUrls[0]}${normalizedLugar}_${normalizedMunicipio}.png`, `${baseUrls[0]}${normalizedMunicipio}_${normalizedLugar}.png`,
+        `${baseUrls[1]}${normalizedMunicipio}.jpg`, `${baseUrls[1]}${normalizedMunicipio}.JPG`, `${baseUrls[1]}${normalizedMunicipio}.png`,
+        `${baseUrls[1]}${normalizedLugar}_${normalizedMunicipio}.jpg`, `${baseUrls[1]}${normalizedMunicipio}_${normalizedLugar}.jpg`,
+        `${baseUrls[1]}${normalizedLugar}_${normalizedMunicipio}.JPG`, `${baseUrls[1]}${normalizedMunicipio}_${normalizedLugar}.JPG`,
+        `${baseUrls[1]}${normalizedLugar}_${normalizedMunicipio}.png`, `${baseUrls[1]}${normalizedMunicipio}_${normalizedLugar}.png`,
+        `${baseUrls[2]}${normalizedMunicipio}.jpg`, `${baseUrls[2]}${normalizedMunicipio}.JPG`, `${baseUrls[2]}${normalizedMunicipio}.png`,
+        `${baseUrls[2]}${normalizedLugar}_${normalizedMunicipio}.jpg`, `${baseUrls[2]}${normalizedMunicipio}_${normalizedLugar}.jpg`,
+        `${baseUrls[2]}${normalizedLugar}_${normalizedMunicipio}.JPG`, `${baseUrls[2]}${normalizedMunicipio}_${normalizedLugar}.JPG`,
+        `${baseUrls[2]}${normalizedLugar}_${normalizedMunicipio}.png`, `${baseUrls[2]}${normalizedMunicipio}_${normalizedLugar}.png`
     ];
 
     const createContent = () => {
@@ -416,7 +532,7 @@ function App() {
         font-family: Arial, sans-serif;
         font-weight: bold;
       `;
-      infoText.innerHTML = 'Más info en: https://debelingoconangel.web.app';
+      infoText.innerHTML = 'Más info en: https://admindebelingo.web.app';
       contentDiv.appendChild(infoText);
 
       tempContainer.appendChild(backgroundDiv);
@@ -479,7 +595,7 @@ function App() {
         <div className="text-center space-y-4">
           <Loader2 className="w-16 h-16 text-blue-500 animate-spin mx-auto" />
           <h2 className="text-2xl font-bold text-white">Cargando Verbenas de Tenerife...</h2>
-          <p className="text-gray-300">Conectando con Firebase...</p>
+          <p className="text-gray-300">Conectando con la base de datos...</p>
         </div>
       </div>
     );
@@ -496,7 +612,7 @@ function App() {
         <section>
           <EventsList 
             events={events} 
-            onExportWeek={exportWeekToImage}
+            onExportWeek={exportByDateToImage}
             onExportFestival={showFestivalSelection}
           />
         </section>
@@ -574,19 +690,14 @@ function App() {
           <MapComponent events={events} />
         </section>
 
-        {/* Gemini Chat */}
-        <section>
-          <GeminiChat events={events} />
-        </section>
-
         {/* Statistics */}
         <section>
           <Statistics events={events} />
         </section>
 
-        {/* Statistics Tables */}
+           {/* Analizador */}
         <section>
-          <StatsTables events={events} />
+          <Analizador events={events} />
         </section>
 
         {/* Visit Counter */}
@@ -604,10 +715,10 @@ function App() {
       <footer className="bg-gray-900 text-white py-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-300">
-            © 2024 De Belingo Con Ángel - Verbenas en Tenerife
+            © 2025 De Belingo Con Ángel - Verbenas en Tenerife
           </p>
           <p className="text-gray-400 text-sm mt-2">
-            Desarrollado con 💙 para la comunidad canaria
+            Desarrollado con 💙 para la comunidad de Tenerife
           </p>
         </div>
       </footer>

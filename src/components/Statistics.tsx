@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { BarChart3, Calendar, Trophy, TrendingUp } from 'lucide-react';
+import { BarChart3, Calendar, Trophy, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { Event, OrquestaCount, MonthlyOrquestaCount } from '../types';
 import { getRandomColor } from '../utils/helpers';
 
@@ -31,6 +31,15 @@ const Statistics: React.FC<StatisticsProps> = ({ events }) => {
   const [currentYearData, setCurrentYearData] = useState<OrquestaCount>({});
   const [nextYearData, setNextYearData] = useState<OrquestaCount>({});
   const [monthlyData, setMonthlyData] = useState<MonthlyOrquestaCount>({});
+  const [monthlyEventCount, setMonthlyEventCount] = useState<{ [month: string]: number }>({});
+  const [expandedMonths, setExpandedMonths] = useState<{ [month: string]: boolean }>({});
+
+  const toggleMonth = (month: string) => {
+    setExpandedMonths(prev => ({
+      ...prev,
+      [month]: !prev[month]
+    }));
+  };
 
   // Get available years
   const availableYears = [...new Set(events.map(event => new Date(event.day).getFullYear()))].sort((a, b) => b - a);
@@ -43,14 +52,19 @@ const Statistics: React.FC<StatisticsProps> = ({ events }) => {
     const currentOrquestaCount: OrquestaCount = {};
     const nextOrquestaCount: OrquestaCount = {};
     const monthlyOrquestaCount: MonthlyOrquestaCount = {};
+    const monthlyEvents: { [month: string]: number } = {};
 
     events.forEach(event => {
       if (event.cancelado) return;
 
-      const eventYear = new Date(event.day).getFullYear();
-      const month = new Date(event.day).toLocaleDateString('es-ES', { month: 'long' });
+      const eventDate = new Date(event.day);
+      const eventYear = eventDate.getFullYear();
+      const month = eventDate.toLocaleDateString('es-ES', { month: 'long' });
 
       if (eventYear === selectedYear) {
+        // Contar eventos por mes
+        monthlyEvents[month] = (monthlyEvents[month] || 0) + 1;
+
         const orquestas = event.orquesta.split(',').map(orq => orq.trim());
         orquestas.forEach(orq => {
           if (orq === 'DJ') return; // Excluir "DJ"
@@ -76,6 +90,7 @@ const Statistics: React.FC<StatisticsProps> = ({ events }) => {
     setCurrentYearData(currentOrquestaCount);
     setNextYearData(nextOrquestaCount);
     setMonthlyData(monthlyOrquestaCount);
+    setMonthlyEventCount(monthlyEvents);
   };
 
   const createChartData = (data: OrquestaCount) => {
@@ -170,26 +185,6 @@ const Statistics: React.FC<StatisticsProps> = ({ events }) => {
   const currentYearChartData = createChartData(currentYearData);
   const nextYearChartData = createChartData(nextYearData);
 
-  // Create monthly table data
-  const createMonthlyTableData = () => {
-    const allOrquestas = new Set<string>();
-    Object.values(monthlyData).forEach(monthOrquestas => {
-      Object.keys(monthOrquestas).forEach(orq => allOrquestas.add(orq));
-    });
-
-    return Array.from(allOrquestas)
-      .map(orquesta => {
-        const totalActuaciones = Object.values(monthlyData).reduce(
-          (total, monthOrquestas) => total + (monthOrquestas[orquesta] || 0), 
-          0
-        );
-        return { orquesta, total: totalActuaciones };
-      })
-      .sort((a, b) => b.total - a.total);
-  };
-
-  const monthlyTableData = createMonthlyTableData();
-
   return (
     <div className="space-y-8">
       {/* Year Selection */}
@@ -218,7 +213,7 @@ const Statistics: React.FC<StatisticsProps> = ({ events }) => {
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
           <h2 className="text-2xl md:text-3xl font-bold text-white text-center flex items-center justify-center gap-3">
             <BarChart3 className="w-8 h-8" />
-            Estadísticas de Actuaciones {selectedYear}
+            Los 15 Primeros De {selectedYear}
             <TrendingUp className="w-8 h-8" />
           </h2>
         </div>
@@ -257,49 +252,70 @@ const Statistics: React.FC<StatisticsProps> = ({ events }) => {
       )}
 
       {/* Monthly Tables */}
-      {monthlyTableData.length > 0 && (
-        <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-blue-600 p-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-white text-center flex items-center justify-center gap-3">
-              <Trophy className="w-8 h-8" />
-              Tabla de Actuaciones {selectedYear}
-              <BarChart3 className="w-8 h-8" />
-            </h2>
-          </div>
+      <div className="space-y-8">
+        {Object.entries(monthlyData)
+          .sort(([monthA], [monthB]) => {
+            const monthsOrder = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+            return monthsOrder.indexOf(monthA.toLowerCase()) - monthsOrder.indexOf(monthB.toLowerCase());
+          })
+          .map(([month, orquestas]) => {
+            const sortedOrquestas = Object.entries(orquestas).sort(([, a], [, b]) => b - a);
+            const totalActuacionesMes = sortedOrquestas.reduce((sum, [, count]) => sum + count, 0);
+            const isExpanded = expandedMonths[month];
 
-          <div className="p-6 overflow-x-auto">
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                    <th className="px-6 py-4 text-left font-bold">FORMACIÓN/SOLISTA</th>
-                    <th className="px-6 py-4 text-center font-bold">TOTAL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthlyTableData.map((item, index) => (
-                    <tr 
-                      key={item.orquesta} 
-                      className={`${
-                        index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                      } hover:bg-blue-50 transition-colors duration-200`}
-                    >
-                      <td className="px-6 py-4 text-gray-800 font-medium">
-                        {item.orquesta}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full font-bold">
-                          {item.total}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+            return (
+              <div key={month} className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-green-600 to-blue-600 p-6 cursor-pointer hover:from-green-700 hover:to-blue-700 transition-all duration-300"
+                  onClick={() => toggleMonth(month)}
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl md:text-2xl font-bold text-white capitalize flex items-center gap-3">
+                      <Calendar className="w-7 h-7" />
+                      {month}
+                    </h3>
+                    {isExpanded ? <ChevronUp className="w-6 h-6 text-white" /> : <ChevronDown className="w-6 h-6 text-white" />}
+                  </div>
+                  <p className="text-center text-white mt-2">
+                    Eventos de este mes: {monthlyEventCount[month] || 0} 
+                  </p>
+                </div>
+
+                {isExpanded && (
+                  <div className="p-6 overflow-x-auto">
+                    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                            <th className="px-6 py-4 text-left font-bold">FORMACIÓN/SOLISTA</th>
+                            <th className="px-6 py-4 text-center font-bold">TOTAL</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedOrquestas.map(([orquesta, count], index) => (
+                            <tr
+                              key={orquesta}
+                              className={`${
+                                index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                              } hover:bg-blue-50 transition-colors duration-200`}
+                            >
+                              <td className="px-6 py-4 text-gray-800 font-medium">{orquesta}</td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full font-bold">
+                                  {count}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+        })}
+      </div>
     </div>
   );
 };
